@@ -51,6 +51,12 @@ get_ultrafeeder_config() {
         # Plane-Watch MLAT results
         config+="mlat,planewatch,30105;"
     fi
+
+    # UAT (dump978) Integration
+    if [[ "${ENABLE_UAT:-false}" == "true" ]]; then
+        # Pull demodulated UAT data from dump978 container
+        config+="adsb,dump978,30978;"
+    fi
     
     echo "$config"
 }
@@ -100,7 +106,15 @@ assemble_compose() {
         fi
     done
 
-    # 3. Optional Visualizer Suite
+    # 3. Optional UAT (978MHz) Suite
+    if [[ "${ENABLE_UAT:-false}" == "true" ]]; then
+        if [[ -f "${TEMPLATES_DIR}/uat.yml" ]]; then
+            cp "${TEMPLATES_DIR}/uat.yml" "${compose_dir}/uat.yml"
+            include_paths+=("compose/uat.yml")
+        fi
+    fi
+
+    # 4. Optional Visualizer Suite
     if [[ "${ENABLE_GRAPHS:-false}" == "true" ]]; then
         if [[ -f "${TEMPLATES_DIR}/graphs.yml" ]]; then
             cp "${TEMPLATES_DIR}/graphs.yml" "${compose_dir}/graphs.yml"

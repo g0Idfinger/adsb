@@ -25,13 +25,52 @@ probe_hardware() {
         return 10
     fi
     
-    if echo "$lsusb_out" | grep -q "0bda:2832" || echo "$lsusb_out" | grep -q "0bda:2838"; then
-        info "Found RTL-SDR hardware (0bda:2832/2838)."
+    # Count unique instances of RTL-SDR chips
+    local count
+    count=$(echo "$lsusb_out" | grep -cE "0bda:2832|0bda:2838" || echo "0")
+    
+    if [[ "$count" -gt 0 ]]; then
+        info "Found $count RTL-SDR hardware device(s)."
         return 0
     else
         error "No RTL-SDR hardware detected. Ensure it is plugged in."
         return 10
     fi
+}
+
+get_sdr_count() {
+    lsusb 2>/dev/null | grep -cE "0bda:2832|0bda:2838" || echo "0"
+}
+
+get_sdr_serials() {
+    # Prefer rtl_test if available as it's more reliable for serials
+    if command -v rtl_test &>/dev/null; then
+        # rtl_test prints to stderr, we capture it and grep for Serial
+        timeout 2s rtl_test -t 2>&1 | grep "Serial number:" | awk -F': ' '{print $2}' || true
+    else
+        # Fallback to lsusb (requires root/sudo for full detail often)
+        local lsusb_cmd="lsusb -v"
+        if [[ $EUID -ne 0 ]] && command -v sudo &>/dev/null; then
+            lsusb_cmd="sudo lsusb -v"
+        fi
+        $lsusb_cmd 2>/dev/null | grep -E "iSerial|0bda:283" | grep -A1 "0bda:283" | grep "iSerial" | awk '{print $3}' || true
+    fi
+}
+
+reserialise_sdr() {
+    local target_serial="$1"
+    local device_index="${2:-0}"
+    
+    if ! command -v rtl_eeprom &>/dev/null; then
+        error "rtl_eeprom utility not found. Please install rtl-sdr package."
+        return 10
+    fi
+    
+    info "Writing serial '$target_serial' to SDR device $device_index..."
+    # Note: rtl_eeprom is interactive by default for confirmation
+    # We use -s to set serial. 
+    # To be safe, we don't use -y here so the user sees the final confirmation prompt from the tool itself.
+    rtl_eeprom -d "$device_index" -s "$target_serial"
 }
 
 # --- Udev & Modprobe ---

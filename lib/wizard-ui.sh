@@ -67,6 +67,128 @@ check_resume() {
     return 1
 }
 
+# --- SDR Serial Management ---
+manage_sdr_serials() {
+    draw_header "SDR SERIAL MANAGEMENT"
+    
+    local count
+    count=$(get_sdr_count)
+    
+    if [[ "$count" -eq 0 ]]; then
+        error "No RTL-SDR devices detected. Please plug in your SDR(s) and try again."
+        return 1
+    fi
+    
+    info "Detected $count SDR device(s)."
+    
+    local serials
+    serials=$(get_sdr_serials)
+    
+    if [[ "$count" -eq 1 ]]; then
+        if [[ "${ENABLE_UAT:-false}" == "true" ]]; then
+            warn "UAT (978MHz) requires a SECOND SDR dongle. You only have one."
+            if ! confirm "Would you like to proceed with 1090MHz only for now?"; then
+                export ENABLE_UAT=false
+                safe_write_env "ENABLE_UAT" "false"
+            fi
+        fi
+        
+        # Ensure 1090 serial is set if default
+        if [[ "$serials" == "00000001" || "$serials" == "00000000" ]]; then
+            warn "Your SDR has a default serial ($serials). Recommended to set it to '1090'."
+            if confirm "Would you like to re-serialize it to '1090' now?"; then
+                reserialise_sdr "1090" 0
+                info "Please unplug and replug your SDR, then press Enter."
+                read -r _
+            fi
+        fi
+        export ADSB_SDR_SERIAL="${serials:-1090}"
+        safe_write_env "ADSB_SDR_SERIAL" "$ADSB_SDR_SERIAL"
+        return 0
+    fi
+    
+    # 2+ SDRs
+    info "Current Serials: $(echo "$serials" | xargs)"
+    
+    # Check for duplicates or defaults
+    if echo "$serials" | sort | uniq -d | grep -q "."; then
+        warn "Duplicate SDR serials detected! This will cause port swapping on reboot."
+        if confirm "Would you like to re-serialize your dongles to '1090' and '978' now?"; then
+            guided_reserialisation
+            # Refresh serials after guiding
+            serials=$(get_sdr_serials)
+        fi
+    fi
+    
+    # Assignment
+    if [[ "${ENABLE_UAT:-false}" == "true" ]]; then
+        info "Assigning SDRs..."
+        local -a s_list
+        read -ra s_list <<< "$serials"
+        if [[ "${s_list[0]:-}" == "1090" ]] && [[ "${s_list[1]:-}" == "978" ]]; then
+            export ADSB_SDR_SERIAL="1090"
+            export UAT_SDR_SERIAL="978"
+        elif [[ "${s_list[0]:-}" == "978" ]] && [[ "${s_list[1]:-}" == "1090" ]]; then
+            export ADSB_SDR_SERIAL="1090"
+            export UAT_SDR_SERIAL="978"
+        else
+            # Manual assignment if not 1090/978
+            echo "Available serials: ${s_list[*]}"
+            prompt_input "ADSB_SDR_SERIAL" "Enter Serial for 1090MHz (ADS-B)" "${s_list[0]:-1090}"
+            prompt_input "UAT_SDR_SERIAL" "Enter Serial for 978MHz (UAT)" "${s_list[1]:-978}"
+        fi
+        safe_write_env "ADSB_SDR_SERIAL" "$ADSB_SDR_SERIAL"
+        safe_write_env "UAT_SDR_SERIAL" "$UAT_SDR_SERIAL"
+    else
+        local first_sdr
+        first_sdr=$(echo "$serials" | head -n 1)
+        export ADSB_SDR_SERIAL="$first_sdr"
+        safe_write_env "ADSB_SDR_SERIAL" "$ADSB_SDR_SERIAL"
+    fi
+}
+
+guided_reserialisation() {
+    info "Starting guided re-serialization. This is high-safety mode."
+    
+    echo "1. Please UNPLUG ALL RTL-SDR dongles from this machine."
+    while [[ $(get_sdr_count) -gt 0 ]]; do
+        sleep 1
+    done
+    info "Confirmed: 0 SDRs connected."
+    
+    echo "2. Plug in ONLY the dongle you want to use for 1090MHz (ADS-B)."
+    while [[ $(get_sdr_count) -ne 1 ]]; do
+        sleep 1
+    done
+    reserialise_sdr "1090" 0
+    
+    echo "3. UNPLUG the 1090 dongle."
+    while [[ $(get_sdr_count) -gt 0 ]]; do
+        sleep 1
+    done
+    
+    if [[ "${ENABLE_UAT:-false}" == "true" ]]; then
+        echo "4. Plug in ONLY the dongle you want to use for 978MHz (UAT)."
+        while [[ $(get_sdr_count) -ne 1 ]]; do
+            sleep 1
+        done
+        reserialise_sdr "978" 0
+        
+        echo "5. UNPLUG the 978 dongle."
+        while [[ $(get_sdr_count) -gt 0 ]]; do
+            sleep 1
+        done
+    fi
+    
+    echo "6. Plug BOTH dongles back in now."
+    local target_count=1
+    [[ "${ENABLE_UAT:-false}" == "true" ]] && target_count=2
+    while [[ $(get_sdr_count) -lt $target_count ]]; do
+        sleep 1
+    done
+    info "Re-serialization complete and verified."
+}
+
 check_quick_path() {
     # 1. Check if stack is already deployed
     if ! is_stack_deployed; then
@@ -304,7 +426,21 @@ run_wizard() {
         prompt_input "FEEDER_LONG" "Enter Longitude (e.g., 4.8952)" "" "LON"
         prompt_input "FEEDER_ALT_M" "Enter Altitude in meters (e.g., 10)" "0" "ALT"
         prompt_input "FEEDER_TZ" "Enter Timezone" "UTC" "TZ"
+        
+        if confirm "Enable 978MHz UAT (USA Only) support?"; then
+            export ENABLE_UAT=true
+        else
+            export ENABLE_UAT=false
+        fi
+        safe_write_env "ENABLE_UAT" "$ENABLE_UAT"
+        
         update_state "LAST_STAGE" "30"
+    fi
+
+    # Stage 35: SDR Serial Management
+    if [[ "$resuming" == false || "$last_stage" -lt 35 ]]; then
+        manage_sdr_serials
+        update_state "LAST_STAGE" "35"
     fi
     
     # Stage 40: Feeder Selection

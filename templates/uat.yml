@@ -1,0 +1,15 @@
+# templates/uat.yml
+# dump978-fa service for 978MHz UAT reception
+
+  dump978:
+    image: ghcr.io/sdr-enthusiasts/docker-dump978:latest
+    container_name: dump978
+    restart: always
+    environment:
+      - TZ=${FEEDER_TZ:-UTC}
+      - DUMP978_RTLSDR_DEVICE=${UAT_SDR_SERIAL:-978}
+      - DUMP978_GAIN=${UAT_SDR_GAIN:-autogain}
+      - DUMP978_PPM=${UAT_SDR_PPM:-0}
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+    network_mode: "service:ultrafeeder"
