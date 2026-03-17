@@ -40,6 +40,10 @@ This tool simplifies the deployment of a professional-grade ADS-B ground station
 - `lib/`: Core logic modules (OS config, Docker logic, state management, etc.).
 - `templates/`: Docker Compose YAML snippets for baseline services and feeders.
 
+## Resources
+
+- **Official Documentation**: [SDR-Enthusiasts Gitbook](https://sdr-enthusiasts.gitbook.io/ads-b)
+
 ## Contributing
 
 This project follows a strict [Engineering Standards](docs/plans/ENGINEERING-STANDARDS.md) and uses Test-Driven Development.
