@@ -1,0 +1,20 @@
+services:
+  # RadarVirtuel Feeder
+  radarvirtuel:
+    image: ghcr.io/sdr-enthusiasts/docker-radarvirtuel:latest
+    container_name: radarvirtuel
+    restart: always
+    environment:
+      - BEASTHOST=ultrafeeder
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - ALT=${FEEDER_ALT_M}
+      - TZ=${FEEDER_TZ}
+      - FEEDER_KEY=${RV_FEEDER_KEY}
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    depends_on:
+      - ultrafeeder
+    networks:
+      - adsb

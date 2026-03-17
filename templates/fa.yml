@@ -1,0 +1,18 @@
+services:
+  # FlightAware (piaware)
+  # Contract: Reads Beast from ultrafeeder:30005
+  piaware:
+    image: ghcr.io/sdr-enthusiasts/docker-piaware:latest
+    container_name: piaware
+    restart: always
+    environment:
+      - BEASTHOST=ultrafeeder
+      - TZ=${FEEDER_TZ}
+      - FEEDER_ID=${PIAWARE_FEEDER_ID}
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    depends_on:
+      - ultrafeeder
+    networks:
+      - adsb

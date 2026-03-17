@@ -1,0 +1,20 @@
+services:
+  # AirNav RadarBox (rbfeeder)
+  rbfeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-airnavradar:latest
+    container_name: rbfeeder
+    restart: always
+    environment:
+      - BEASTHOST=ultrafeeder
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - ALT=${FEEDER_ALT_M}
+      - TZ=${FEEDER_TZ}
+      - SHARING_KEY=${AIRNAVRADAR_SHARING_KEY}
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    depends_on:
+      - ultrafeeder
+    networks:
+      - adsb

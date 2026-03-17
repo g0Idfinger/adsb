@@ -1,0 +1,4 @@
+# templates/networks.yml
+networks:
+  adsb:
+    driver: bridge

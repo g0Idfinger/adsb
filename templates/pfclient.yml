@@ -1,0 +1,21 @@
+services:
+  # PlaneFinder (pfclient)
+  pfclient:
+    image: ghcr.io/sdr-enthusiasts/docker-planefinder:latest
+    container_name: pfclient
+    restart: always
+    environment:
+      - BEASTHOST=ultrafeeder
+      - LAT=${FEEDER_LAT}
+      - LONG=${FEEDER_LONG}
+      - TZ=${FEEDER_TZ}
+      - SHARECODE=${PLANEFINDER_SHARECODE}
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    depends_on:
+      - ultrafeeder
+    networks:
+      - adsb
+    ports:
+      - 30053:30053

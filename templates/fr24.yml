@@ -1,0 +1,18 @@
+services:
+  # Flightradar24 (fr24)
+  # Contract: Reads Beast from ultrafeeder:30005
+  fr24:
+    image: ghcr.io/sdr-enthusiasts/docker-flightradar24:latest
+    container_name: fr24
+    restart: always
+    ports:
+      - 8754:8754
+    environment:
+      - BEASTHOST=ultrafeeder
+      - FR24KEY=${FR24_SHARING_KEY}
+    tmpfs:
+      - /var/log
+    depends_on:
+      - ultrafeeder
+    networks:
+      - adsb

@@ -1,0 +1,17 @@
+services:
+  # ADSBHub
+  adsbhub:
+    image: ghcr.io/sdr-enthusiasts/docker-adsbhub:latest
+    container_name: adsbhub
+    restart: always
+    environment:
+      - SBSHOST=ultrafeeder
+      - TZ=${FEEDER_TZ}
+      - CLIENTKEY=${ADSBHUB_STATION_KEY}
+    tmpfs:
+      - /run:exec,size=64M
+      - /var/log
+    depends_on:
+      - ultrafeeder
+    networks:
+      - adsb

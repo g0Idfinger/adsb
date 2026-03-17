@@ -1,0 +1,42 @@
+# Local Environment
+.env
+.env.tmp
+.installer_state
+.installer_state.tmp
+
+# Backups
+.backups/
+
+# Generated Configuration
+docker-compose.yml
+docker-compose.yml.tmp
+compose/*.yml
+compose/*.yml.tmp
+
+# Data Volumes (Local data)
+volumes/
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Lockfiles
+*.lock
+
+# Logs
+*.log
+
+# Agent & AI Metadata (Keep these private)
+.agent/
+.gemini/
+.system_generated/
+AGENTS.md
+GEMINI.md
+
+# Development & Documentation (Optional to keep private)
+docs/
+contracts/
+# tests/ (Included for GitHub CI)
+
+# shc metadata
+*.sh.x.c
